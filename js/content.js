@@ -659,6 +659,925 @@ window.DDIA_CONTENT = {
             ],
           },
         },
+
+        /* ============================ CHAPTER 2 ============================ */
+        {
+          id: "ch2",
+          number: 2,
+          title: "Data Models & Query Languages",
+          summary:
+            "Data models are the deepest choice you make — they shape not just your code, but how you think about the problem. Relational, document, and graph, and the languages that query them.",
+          estMinutes: 52,
+          status: "ready",
+          epigraph: {
+            quote: "The limits of my language mean the limits of my world.",
+            source: "Ludwig Wittgenstein, Tractatus Logico-Philosophicus (1922)",
+          },
+          sections: [
+            {
+              id: "relational-document",
+              title: "Relational vs. Document",
+              icon: "layers",
+              estMinutes: 15,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "Data models are perhaps *the* most important part of building software — they shape how the software is written, and how we think about the problem. Most apps are built by layering one data model on top of another.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "The dominant model is **SQL / the relational model** (Codd, 1970): data organized into *relations* (tables) of unordered *tuples* (rows). It won so completely that we forget it once had rivals. **NoSQL** rose in the 2010s driven by a need for greater scale, a preference for free/open-source, specialized queries relational SQL handles poorly, and frustration with the rigid relational schema.",
+                },
+                {
+                  type: "h",
+                  text: "The object-relational mismatch",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Most application code is object-oriented, so working with a relational database needs an awkward translation layer (ORMs). This disconnect is called an **impedance mismatch**. A résumé — one person with many jobs and many education entries — is naturally a *one-to-many tree*, which a single JSON **document** captures with good locality.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Documents fit trees",
+                  text:
+                    "For self-contained one-to-many tree data (a résumé, an invoice, a blog post with comments), a JSON document has better locality and less impedance mismatch than shredding it across many relational tables — you load the whole thing in one read.",
+                },
+                {
+                  type: "h",
+                  text: "Many-to-one and many-to-many",
+                },
+                {
+                  type: "p",
+                  text:
+                    "**Normalization** stores human-meaningful info in exactly one place and refers to it by an ID that never needs to change (so no risk of some copies going stale). But this needs *many-to-one* relationships (many people live in one region), which don't fit the document model well — document DBs have weak **join** support. And as an app grows, data tends to become more interconnected: add recommendations, or make organizations their own entities, and you have *many-to-many* relationships.",
+                },
+                {
+                  type: "callout",
+                  variant: "warning",
+                  title: "Joins don't vanish — they move",
+                  text:
+                    "If your database can't do joins, you emulate them in application code with multiple queries. The work doesn't disappear — it moves into your app, adds complexity, and is usually slower than a join running inside the database.",
+                },
+                {
+                  type: "h",
+                  text: "Schema-on-read vs. schema-on-write",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Document DBs are often called *schemaless*, but that's misleading — the code reading the data still assumes *some* structure. There's an **implicit** schema; it's just not enforced by the database. Better terms: **schema-on-read** (structure is interpreted only when data is read — like dynamic/run-time typing) vs **schema-on-write** (the relational way — schema is explicit and the DB enforces it — like static/compile-time typing).",
+                },
+                {
+                  type: "code",
+                  lang: "js",
+                  code:
+                    "// schema-on-read: just start writing the new shape,\n// and handle old documents in code at read time\nif (user && user.name && !user.first_name) {\n  user.first_name = user.name.split(\" \")[0];\n}\n\n-- schema-on-write: migrate the table up front\nALTER TABLE users ADD COLUMN first_name text;\nUPDATE users SET first_name = split_part(name, ' ', 1);",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Schema-on-read shines when data is **heterogeneous** (many object types, or a structure dictated by external systems you don't control). Schema-on-write is valuable when all records share a structure worth documenting and enforcing.",
+                },
+                {
+                  type: "h",
+                  text: "Data locality",
+                },
+                {
+                  type: "p",
+                  text:
+                    "A document is stored as one contiguous blob (JSON/BSON). That's a **locality** win if you often need the whole document at once — but wasteful if you only need a piece, because the DB must load the entire document, and any update usually rewrites the whole thing. So keep documents small. Locality isn't unique to documents — Google Spanner and Bigtable's column-families provide it inside relational models too.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "Your app stores blog posts, each with its list of comments and tags, and almost always loads a whole post at once with no cross-post relationships. Which model does the chapter favor, and why?",
+                  options: [
+                    "Relational — it's always the safe default.",
+                    "Document — the data is a self-contained one-to-many tree, so a single document gives better locality and less impedance mismatch.",
+                    "Graph — all data should be a graph.",
+                    "It makes no difference at all.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Tree-shaped, self-contained one-to-many data loaded whole is exactly where documents excel: one read, good locality, no shredding across tables.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "A teammate calls MongoDB \"schemaless.\" What's the more precise framing from the chapter?",
+                  options: [
+                    "It's correct — there is genuinely no schema anywhere.",
+                    "There's still an implicit schema the reading code assumes; it's schema-on-read (enforced by the app, not the DB) rather than schema-on-write.",
+                    "Documents can never change shape.",
+                    "Schemas only exist in graph databases.",
+                  ],
+                  answer: 1,
+                  why:
+                    "'Schemaless' hides that the reader assumes structure. The distinction is where/when the schema is enforced: on read (implicit, in app code) vs on write (explicit, by the DB).",
+                },
+              ],
+            },
+            {
+              id: "great-debate",
+              title: "The Great Debate (a history lesson)",
+              icon: "history",
+              estMinutes: 11,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "Today's relational-vs-document argument is a rerun. The same fight played out in the 1970s — and the reasons one side won are still the reasons that matter.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "IBM's **IMS** (1968, built for the Apollo program) used the **hierarchical model**: data as a tree of records nested within records — remarkably like JSON. It was great for one-to-many, bad at many-to-many, and had no joins. Sound familiar? Developers had to either duplicate (denormalize) data or manually chase references.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Two solutions competed to fix it: the **network (CODASYL) model** and the **relational model**.",
+                },
+                {
+                  type: "term",
+                  word: "Network / CODASYL model",
+                  def:
+                    "A record can have multiple parents; links are like pointers on disk. The only way to reach a record is to follow an **access path** — the programmer manually navigates an n-dimensional space. Efficient on 1970s hardware, but the query code was complex and inflexible.",
+                },
+                {
+                  type: "term",
+                  word: "Relational model",
+                  def:
+                    "Lay all the data out in the open — a table is just a collection of rows, no labyrinthine access paths. A **query optimizer** decides the access paths automatically; to query a new way you just declare an index. Build the optimizer once, and every app benefits.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "The idea that won",
+                  text:
+                    "The relational model moved the burden of choosing access paths from the developer to the query optimizer. Document DBs reverted to the hierarchical model for nested one-to-many data — but for many-to-many, relational and document DBs use the *same* trick: reference by unique ID (a foreign key / document reference), resolved at read time.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "In the network (CODASYL) model, who chose the access path to reach a record — and what changed with the relational model?",
+                  options: [
+                    "The DBA chose it; relational moved it to the network admin.",
+                    "The application programmer navigated access paths manually; the relational model handed that job to an automatic query optimizer.",
+                    "Nobody chose paths in either model.",
+                    "The relational model removed indexes entirely.",
+                  ],
+                  answer: 1,
+                  why:
+                    "CODASYL required hand-coded, hard-to-change access paths. The relational model's key advance was a reusable optimizer that picks paths automatically, so apps adapt easily.",
+                },
+              ],
+            },
+            {
+              id: "query-languages",
+              title: "Query Languages: declarative vs. imperative",
+              icon: "code",
+              estMinutes: 13,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "SQL didn't just introduce a data model — it introduced a new *way to ask*: a **declarative** language. IMS and CODASYL queried with **imperative** code.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Imperative code tells the computer the exact steps: loop, test, push, repeat. A declarative language (SQL, relational algebra) specifies only the *pattern* of data you want — the conditions, sorting, grouping — not *how* to fetch it. The optimizer chooses indexes and join order.",
+                },
+                {
+                  type: "code",
+                  lang: "js",
+                  code:
+                    "// imperative: you spell out every step\nfunction getSharks() {\n  var sharks = [];\n  for (var i = 0; i < animals.length; i++) {\n    if (animals[i].family === \"Sharks\") sharks.push(animals[i]);\n  }\n  return sharks;\n}\n\n-- declarative: you state what you want\nSELECT * FROM animals WHERE family = 'Sharks';",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Why declarative wins",
+                  text:
+                    "It's more concise, and — crucially — it hides the engine's internals. The database can add a new index, reorder joins, or run the query in **parallel across CPU cores** without you changing a single line. Imperative code, bound to a specific order, can't be parallelized safely because the DB can't tell whether you depend on that order.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "This advantage isn't limited to databases. In a browser, **CSS** and **XPath** are declarative: `li.selected > p { background: blue }` just describes the pattern. Doing the same by imperatively walking the DOM in JavaScript is longer, more brittle (it won't un-highlight when the class is removed), and can't be optimized by the browser.",
+                },
+                {
+                  type: "h",
+                  text: "MapReduce — somewhere in between",
+                },
+                {
+                  type: "p",
+                  text:
+                    "**MapReduce** (popularized by Google) processes bulk data across many machines using *map* and *reduce* functions — snippets of code the framework calls repeatedly. It's neither fully declarative nor fully imperative. The functions must be **pure** (no side effects, no extra queries), so the framework can run them anywhere, in any order, and safely retry them on failure.",
+                },
+                {
+                  type: "callout",
+                  variant: "story",
+                  title: "NoSQL accidentally reinvents SQL",
+                  text:
+                    "Writing two carefully-coordinated JavaScript functions is harder than writing one query, and gives the optimizer less to work with. So MongoDB later added a declarative **aggregation pipeline** — JSON syntax, but expressively a subset of SQL. The moral: a NoSQL system may find itself accidentally reinventing SQL, in disguise.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "Why can a declarative SQL query get faster on new hardware without you rewriting it, while equivalent imperative code often can't?",
+                  options: [
+                    "SQL is compiled and imperative code is not.",
+                    "Declarative queries state only the desired result, so the engine is free to change indexes, join order, and use parallel execution; imperative code fixes an execution order the engine must preserve.",
+                    "Imperative code is always buggier.",
+                    "SQL never touches the disk.",
+                  ],
+                  answer: 1,
+                  why:
+                    "By specifying *what*, not *how*, declarative queries leave the engine room to optimize and parallelize. Imperative steps pin down an order the engine can't safely rearrange.",
+                },
+              ],
+            },
+            {
+              id: "graph-models",
+              title: "Graph Data Models",
+              icon: "graph",
+              estMinutes: 13,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "When many-to-many relationships dominate and data is highly interconnected, it becomes natural to model data as a **graph**: *vertices* (nodes) connected by *edges* (relationships).",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Familiar examples: social graphs (people / who-knows-whom), the web graph (pages / links), road networks (junctions / roads). Classic algorithms run on them — shortest path for routing, PageRank for ranking. Graphs also store *heterogeneous* data: Facebook keeps a single graph whose vertices are people, locations, events, check-ins, and comments.",
+                },
+                {
+                  type: "term",
+                  word: "Property graph",
+                  def:
+                    "Each vertex has a unique id, a set of properties (key-values), and sets of incoming and outgoing edges. Each edge has an id, a tail vertex, a head vertex, a label (the kind of relationship), and properties. Any vertex can connect to any other — which makes graphs superb for evolvability as your app grows.",
+                },
+                {
+                  type: "code",
+                  lang: "cypher",
+                  code:
+                    "-- Cypher: create edges with an arrow notation\nCREATE\n  (USA:Location   {name:'United States', type:'country'}),\n  (Idaho:Location {name:'Idaho', type:'state'}),\n  (Lucy:Person    {name:'Lucy'}),\n  (Idaho)-[:WITHIN]->(USA),\n  (Lucy)-[:BORN_IN]->(Idaho)\n\n-- find people who emigrated from the US to Europe\nMATCH\n  (p) -[:BORN_IN]->  () -[:WITHIN*0..]-> (:Location {name:'United States'}),\n  (p) -[:LIVES_IN]-> () -[:WITHIN*0..]-> (:Location {name:'Europe'})\nRETURN p.name   -- :WITHIN*0.. means \"follow WITHIN zero or more times\"",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Same query: 4 lines vs. 29",
+                  text:
+                    "That US→Europe query is 4 lines in Cypher but ~29 lines of SQL using a recursive common table expression (WITH RECURSIVE), because the number of joins (levels of location nesting) isn't known in advance. Different data models suit different data — for highly interconnected data, graphs are the most natural fit.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "**Triple-stores** express the same idea as `(subject, predicate, object)` — e.g. `(lucy, marriedTo, alain)`. **SPARQL** is their query language (it predates and inspired Cypher). **Datalog**, older still, is the foundation both build on. All are declarative graph query languages.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "You're modeling a dataset where any entity might relate to any other in ways you can't fully predict, and you'll keep adding new relationship types. Which model does the chapter call most natural?",
+                  options: [
+                    "The document model — nest everything.",
+                    "A graph model — any vertex can link to any other, and it extends cleanly as new relationship types appear.",
+                    "A single wide relational table.",
+                    "MapReduce.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Graphs impose no restriction on which vertices connect, so they adapt as relationships grow and diversify — ideal for highly interconnected, evolving data.",
+                },
+              ],
+            },
+          ],
+          evaluation: {
+            title: "Chapter 2 Evaluation",
+            passPct: 70,
+            intro:
+              "Ten questions across relational, document, and graph models plus query languages. Score 70% or higher to complete the chapter.",
+            questions: [
+              {
+                q: "The awkward translation between object-oriented application code and the relational model is called…",
+                options: ["Normalization", "The impedance mismatch", "Schema-on-read", "Fan-out"],
+                answer: 1,
+                why: "ORMs exist to bridge the impedance mismatch between objects and relations.",
+              },
+              {
+                q: "The document model has the best locality for which kind of data?",
+                options: [
+                  "Highly interconnected many-to-many data.",
+                  "Self-contained one-to-many tree data usually loaded as a whole.",
+                  "Data with no structure at all.",
+                  "Time-series analytics.",
+                ],
+                answer: 1,
+                why: "One read fetches the whole tree; shredding it across tables would need many lookups.",
+              },
+              {
+                q: "The main downside of the document model for many-to-many relationships is…",
+                options: [
+                  "Documents can't store numbers.",
+                  "Weak join support, so you emulate joins in app code (more complexity, usually slower).",
+                  "It requires a schema up front.",
+                  "It can't be indexed.",
+                ],
+                answer: 1,
+                why: "Without DB joins, the join work moves into application code via multiple queries.",
+              },
+              {
+                q: "\"Schema-on-read\" is most analogous to…",
+                options: [
+                  "Static (compile-time) type checking.",
+                  "Dynamic (run-time) type checking.",
+                  "Manual memory management.",
+                  "Two-phase commit.",
+                ],
+                answer: 1,
+                why: "Structure is interpreted when data is read, like dynamic typing; schema-on-write is like static typing.",
+              },
+              {
+                q: "IBM's IMS used the hierarchical model, which most resembles…",
+                options: [
+                  "The graph model.",
+                  "The JSON/document model — nested records forming a tree.",
+                  "Column-oriented storage.",
+                  "The relational model.",
+                ],
+                answer: 1,
+                why: "The 1968 hierarchical model nested records in a tree, strikingly like today's JSON documents.",
+              },
+              {
+                q: "The relational model's key advantage over CODASYL was…",
+                options: [
+                  "It used less disk.",
+                  "A query optimizer chooses access paths automatically, instead of the programmer hand-coding them.",
+                  "It removed the need for keys.",
+                  "It forbade many-to-many relationships.",
+                ],
+                answer: 1,
+                why: "Build the optimizer once; every application benefits and can adapt queries without rewriting navigation code.",
+              },
+              {
+                q: "A declarative query language (like SQL) beats an imperative API mainly because it…",
+                options: [
+                  "Runs only on one machine.",
+                  "Hides execution details, so the engine can optimize, add indexes, and parallelize without query changes.",
+                  "Is always shorter to type.",
+                  "Guarantees a fixed row order.",
+                ],
+                answer: 1,
+                why: "Stating *what*, not *how*, gives the engine freedom to optimize and parallelize across cores.",
+              },
+              {
+                q: "MapReduce's map and reduce functions must be pure. Why?",
+                options: [
+                  "To make them run slower.",
+                  "So the framework can run them anywhere, in any order, and safely retry on failure.",
+                  "Because JavaScript requires it.",
+                  "To enforce a schema.",
+                ],
+                answer: 1,
+                why: "No side effects and no extra queries means the functions are safely relocatable and re-runnable.",
+              },
+              {
+                q: "In a property graph, an edge carries all of the following EXCEPT…",
+                options: [
+                  "A tail vertex and a head vertex.",
+                  "A label describing the relationship.",
+                  "A fixed maximum number of allowed vertices in the whole graph.",
+                  "Its own set of properties.",
+                ],
+                answer: 2,
+                why: "Edges have tail/head vertices, a label, and properties; graphs impose no global vertex limit.",
+              },
+              {
+                q: "For highly interconnected data with unpredictable, growing relationship types, the most natural model is…",
+                options: ["Document", "Graph", "A single wide table", "Key-value with a hash index"],
+                answer: 1,
+                why: "Graphs let any vertex connect to any other and extend cleanly, ideal for evolving interconnected data.",
+              },
+            ],
+          },
+        },
+
+        /* ============================ CHAPTER 3 ============================ */
+        {
+          id: "ch3",
+          number: 3,
+          title: "Storage & Retrieval",
+          summary:
+            "How databases actually store data on disk and get it back fast — logs, hash indexes, LSM-trees, B-trees — and why analytics needs a completely different layout: column-oriented storage.",
+          estMinutes: 50,
+          status: "ready",
+          epigraph: {
+            quote:
+              "Wer Ordnung hält, ist nur zu faul zum Suchen. (If you keep things tidily ordered, you're just too lazy to go searching.)",
+            source: "German proverb",
+          },
+          sections: [
+            {
+              id: "logs-indexes",
+              title: "The simplest database: logs & indexes",
+              icon: "db",
+              estMinutes: 12,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "At its core a database does two things: store the data you give it, and give it back when you ask. The world's simplest database is two shell functions appending to a text file.",
+                },
+                {
+                  type: "code",
+                  lang: "bash",
+                  code:
+                    "db_set () { echo \"$1,$2\" >> database; }      # append key,value\ndb_get () { grep \"^$1,\" database | sed -e \"s/^$1,//\" | tail -n 1; }",
+                },
+                {
+                  type: "p",
+                  text:
+                    "`db_set` is fast — appending to a file is about the cheapest thing a computer can do. But `db_get` is **O(n)**: it scans the entire file. To read efficiently we need an **index** — an additional structure *derived* from the primary data. And here's the fundamental trade-off of storage engines:",
+                },
+                {
+                  type: "callout",
+                  variant: "warning",
+                  title: "The index trade-off",
+                  text:
+                    "A well-chosen index speeds up reads — but every index *slows down writes*, because each write must also update the index. This is why databases don't index everything by default: you, knowing the query patterns, choose the indexes worth their write cost.",
+                },
+                {
+                  type: "h",
+                  text: "Hash indexes",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Keep an in-memory hash map: each key → the byte offset of its value in the file. On write, append the value and update the map; on read, look up the offset and seek straight to it. This is essentially how **Bitcask** (the default engine in Riak) works — excellent when you have many writes but the set of *distinct* keys fits in memory.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Append-only means the file grows forever. The fix: break the log into **segments** and **compact** them — throw away duplicate keys, keeping only the latest value for each — merging segments in a background thread.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Why append-only is surprisingly fast",
+                  text:
+                    "Appending and merging segments are *sequential* writes — dramatically faster than random writes on both spinning disks and SSDs. Immutable segments also make concurrency and crash recovery far simpler: you never leave a half-overwritten value behind.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "But hash indexes have two hard limits: the hash table must fit in **memory**, and **range queries** are inefficient (you can't scan `key0001`–`key9999` without probing each one). That motivates the next design.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "Your write-heavy service suddenly slows down after you add three new indexes to a table. What's the most likely explanation from the chapter?",
+                  options: [
+                    "Indexes always speed everything up; something else is wrong.",
+                    "Each index must be updated on every write, so more indexes mean slower writes — the classic read/write trade-off.",
+                    "Indexes only affect deletes.",
+                    "The disk ran out of range queries.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Indexes accelerate reads at the cost of writes; adding indexes adds per-write update work. Index only what your queries justify.",
+                },
+              ],
+            },
+            {
+              id: "lsm-btree",
+              title: "SSTables, LSM-Trees & B-Trees",
+              icon: "tree",
+              estMinutes: 14,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "Two families of storage engine power almost every database you'll meet: **LSM-trees** (log-structured) and **B-trees** (the classic).",
+                },
+                {
+                  type: "h",
+                  text: "SSTables and LSM-Trees",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Require each segment's key-value pairs to be **sorted by key** — a *Sorted String Table* (SSTable). Sorting buys three things: merging segments is efficient (a mergesort of sorted files), you no longer need every key in memory (a **sparse** index is enough — find the nearest indexed key and scan), and you can group records into blocks and compress them.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "How do you keep writes sorted when they arrive in random order? Buffer them in an in-memory balanced tree — the **memtable**. When it grows past a threshold, flush it to disk as a new SSTable. Reads check the memtable, then the newest segment, then older ones; background **compaction** merges segments continuously. This is an **LSM-tree** (Log-Structured Merge-tree) — behind LevelDB, RocksDB, Cassandra, and HBase. A **Bloom filter** avoids wasted disk lookups for keys that don't exist.",
+                },
+                {
+                  type: "h",
+                  text: "B-Trees",
+                },
+                {
+                  type: "p",
+                  text:
+                    "The most widely used index — the default in nearly every relational database. B-trees break the database into fixed-size **pages** (~4 KB), read and written one page at a time, arranged as a balanced tree you descend by key. Unlike LSM's append-only style, B-trees **overwrite pages in place**. To stay crash-safe mid-write, they first record changes in a **write-ahead log (WAL)** so a crash can be recovered.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "LSM vs. B-tree: the trade-off",
+                  text:
+                    "LSM-trees are usually faster for **writes** (sequential I/O, higher write throughput, better compression, smaller files). B-trees are usually faster and more predictable for **reads** (each key lives in exactly one place, so no checking multiple segments). LSM's background compaction can occasionally interfere with live requests, hurting tail latency. There's no universal winner — match the engine to your workload and measure.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "In an LSM-tree, what keeps incoming writes sorted even though they arrive in random key order?",
+                  options: [
+                    "The write-ahead log.",
+                    "An in-memory balanced tree (the memtable) that is flushed to disk as a sorted SSTable once it's large enough.",
+                    "The Bloom filter.",
+                    "The query optimizer.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Writes buffer in the memtable (kept sorted in memory); when it's full it's written out as an already-sorted SSTable segment.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "A B-tree overwrites pages in place. What mechanism lets it survive a crash that happens halfway through a page write?",
+                  options: [
+                    "A Bloom filter.",
+                    "The write-ahead log (WAL) / redo log, which records changes first so recovery can replay them.",
+                    "Compaction.",
+                    "The memtable.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Because in-place overwrites can be interrupted, B-trees write intended changes to a WAL first, enabling consistent recovery after a crash.",
+                },
+              ],
+            },
+            {
+              id: "oltp-olap",
+              title: "OLTP vs. OLAP & the Data Warehouse",
+              icon: "trending",
+              estMinutes: 11,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "Two very different access patterns need two very different storage designs — even when both speak SQL.",
+                },
+                {
+                  type: "term",
+                  word: "OLTP — transaction processing",
+                  def:
+                    "User-facing apps: fetch a small number of records by key, plus low-latency reads and writes. Bottlenecked by disk seeks. Example: look up one customer's order.",
+                },
+                {
+                  type: "term",
+                  word: "OLAP — analytics",
+                  def:
+                    "Business intelligence: scan huge numbers of records, read only a few columns, compute aggregates (sum, count, avg). Bottlenecked by disk bandwidth. Example: total revenue per region last quarter.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Running heavy analytic scans on the live OLTP database would wreck user-facing latency, so companies copy data into a separate, read-optimized **data warehouse**, populated by **ETL** (Extract → Transform → Load). Analysts hammer the warehouse without touching production.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Warehouses typically use a **star schema**: a central **fact table** with one row per event (a sale, a click, a page view), surrounded by **dimension tables** (product, customer, date, store) referenced by foreign keys — the *who / what / where / when / how* of each event. A **snowflake** schema breaks dimensions down further into sub-dimensions.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Same SQL, opposite engine",
+                  text:
+                    "OLTP and OLAP systems may both accept SQL, but under the hood they are built completely differently. That difference in physical storage is exactly what the next section is about.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "Why do organizations run analytics against a separate data warehouse instead of the production OLTP database?",
+                  options: [
+                    "Warehouses are cheaper to license.",
+                    "Big analytic scans would compete with and degrade the low-latency reads/writes users depend on, so analytics gets its own read-optimized copy.",
+                    "OLTP databases can't run SQL.",
+                    "ETL is required by law.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Analytics scans huge datasets; running that on live OLTP harms user-facing performance. A warehouse isolates and optimizes for that workload.",
+                },
+              ],
+            },
+            {
+              id: "column-storage",
+              title: "Column-Oriented Storage",
+              icon: "columns",
+              estMinutes: 13,
+              blocks: [
+                {
+                  type: "lead",
+                  text:
+                    "Fact tables can hold trillions of rows and hundreds of columns — yet a typical analytic query reads only 4 or 5 of those columns. Row-oriented storage forces the engine to load *every* column of every row it scans. Column storage flips this on its head.",
+                },
+                {
+                  type: "figure",
+                  render: "rowVsColumn",
+                  caption:
+                    "Row-oriented stores whole rows together; column-oriented stores each column's values together — so a query touching a few columns reads only those.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Store all the values of **each column together** in its own file, rather than all values of each row. Now a query over 5 columns reads only those 5 columns' files — an enormous reduction in I/O over reading every column of every row.",
+                },
+                {
+                  type: "callout",
+                  variant: "insight",
+                  title: "Columns compress beautifully",
+                  text:
+                    "Values within a single column are similar and repetitive, so they compress extremely well (e.g. **bitmap encoding** of distinct values). Less data on disk means less bandwidth to read and more data fitting in CPU cache — enabling fast **vectorized** processing over tight loops.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "You can also **sort** rows by a chosen column, which speeds range filters and boosts compression further; a warehouse may even store the same data sorted several different ways for redundancy. Writes get harder (you can't cheaply insert into the middle of a sorted column) — but the **LSM-tree** approach solves it: buffer writes in memory, then merge them into the column files in bulk.",
+                },
+                {
+                  type: "p",
+                  text:
+                    "Finally, since the same aggregates get computed over and over, warehouses precompute them as a **materialized view** or a **data cube** (a grid of aggregates across dimensions) — making dashboards feel instant, at the cost of some flexibility.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "An analytics query sums one column across a 200-column, billion-row fact table. Why is column-oriented storage dramatically faster here?",
+                  options: [
+                    "It uses a faster CPU.",
+                    "It reads only the file(s) for the column(s) the query needs, instead of loading all 200 columns of every row.",
+                    "It avoids SQL entirely.",
+                    "It stores less data overall by deleting rows.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Column storage lets the engine read just the referenced columns, slashing I/O compared with row storage that must pull every column of each scanned row.",
+                },
+                {
+                  type: "check",
+                  q:
+                    "Why does data in a single column compress so much better than a whole row?",
+                  options: [
+                    "Columns are stored encrypted.",
+                    "Values in one column are of the same type and highly repetitive/similar, so encodings like bitmap compression shrink them a lot.",
+                    "Rows contain no data.",
+                    "Compression only works on integers.",
+                  ],
+                  answer: 1,
+                  why:
+                    "Homogeneous, repetitive column values compress far better than a heterogeneous row, cutting disk bandwidth and improving cache use.",
+                },
+              ],
+            },
+          ],
+          evaluation: {
+            title: "Chapter 3 Evaluation",
+            passPct: 70,
+            intro:
+              "Eleven questions on storage engines and analytical storage. Score 70% or higher to complete the chapter.",
+            questions: [
+              {
+                q: "The fundamental trade-off that an index introduces is…",
+                options: [
+                  "It speeds up both reads and writes.",
+                  "It speeds up reads but slows down writes.",
+                  "It slows reads but speeds writes.",
+                  "It has no effect on performance.",
+                ],
+                answer: 1,
+                why: "Every index must be maintained on each write, trading write cost for faster reads.",
+              },
+              {
+                q: "Bitcask-style hash indexes struggle with…",
+                options: [
+                  "Point lookups by key.",
+                  "Keeping all keys in memory and doing efficient range queries.",
+                  "Sequential writes.",
+                  "Crash recovery.",
+                ],
+                answer: 1,
+                why: "The hash map must fit in RAM, and hashes give no ordering, so range scans are inefficient.",
+              },
+              {
+                q: "Why are append-only logs and segment merges fast on real hardware?",
+                options: [
+                  "They avoid using the disk.",
+                  "They are sequential writes, which are much faster than random writes on disks and SSDs, and immutability simplifies concurrency/recovery.",
+                  "They compress everything to zero.",
+                  "They never need compaction.",
+                ],
+                answer: 1,
+                why: "Sequential I/O dominates random I/O in throughput, and immutable segments ease concurrency and crash recovery.",
+              },
+              {
+                q: "An SSTable requires that its key-value pairs are…",
+                options: ["Encrypted", "Sorted by key", "Stored in insertion order", "All in memory"],
+                answer: 1,
+                why: "Sorted keys enable efficient merging, sparse in-memory indexes, and block compression.",
+              },
+              {
+                q: "In an LSM-tree, writes are first buffered in…",
+                options: [
+                  "A B-tree page.",
+                  "An in-memory balanced tree called the memtable, later flushed as a sorted SSTable.",
+                  "The write-ahead log only.",
+                  "A materialized view.",
+                ],
+                answer: 1,
+                why: "The memtable keeps recent writes sorted in memory until it's flushed to disk as an SSTable.",
+              },
+              {
+                q: "A Bloom filter in an LSM-tree helps by…",
+                options: [
+                  "Sorting the data.",
+                  "Quickly telling you a key is definitely NOT present, avoiding pointless disk reads across segments.",
+                  "Compressing columns.",
+                  "Replacing the WAL.",
+                ],
+                answer: 1,
+                why: "Bloom filters cheaply rule out absent keys, saving disk lookups on reads that would find nothing.",
+              },
+              {
+                q: "B-trees differ from LSM-trees primarily because they…",
+                options: [
+                  "Never use a log.",
+                  "Overwrite fixed-size pages in place (and use a write-ahead log for crash safety), rather than appending immutable segments.",
+                  "Store data unsorted.",
+                  "Only work in memory.",
+                ],
+                answer: 1,
+                why: "B-trees update pages in place; a WAL makes those in-place overwrites crash-safe.",
+              },
+              {
+                q: "Which best contrasts OLTP and OLAP?",
+                options: [
+                  "OLTP scans everything; OLAP fetches one row.",
+                  "OLTP fetches a few records by key with low latency; OLAP scans many records over a few columns to compute aggregates.",
+                  "They are identical.",
+                  "OLAP is for writes, OLTP is for reads.",
+                ],
+                answer: 1,
+                why: "OLTP = seek-bound key lookups for apps; OLAP = bandwidth-bound scans for analytics.",
+              },
+              {
+                q: "In a star schema, the central table with one row per event is the…",
+                options: ["Dimension table", "Fact table", "Materialized view", "Segment"],
+                answer: 1,
+                why: "The fact table holds events; dimension tables (product, date, customer…) describe them.",
+              },
+              {
+                q: "Column-oriented storage speeds analytics mainly because…",
+                options: [
+                  "It deletes old rows.",
+                  "It reads only the columns a query references, instead of every column of every scanned row.",
+                  "It disables indexing.",
+                  "It stores rows twice.",
+                ],
+                answer: 1,
+                why: "Storing columns separately lets the engine read just the needed columns, cutting I/O massively.",
+              },
+              {
+                q: "Precomputing common aggregates as a materialized view or data cube trades…",
+                options: [
+                  "Correctness for speed.",
+                  "Flexibility for speed — dashboards get instant answers but the precomputed grid is less flexible than ad-hoc queries.",
+                  "Nothing; it's free.",
+                  "Storage for nothing.",
+                ],
+                answer: 1,
+                why: "Materialized aggregates make repeated queries instant but are less flexible than computing from raw data each time.",
+              },
+            ],
+          },
+        },
+
+        /* Not yet authored — shown as \"coming\" in the listing. */
+        {
+          id: "ch4",
+          number: 4,
+          title: "Encoding and Evolution",
+          summary:
+            "How data is encoded for storage and over the wire (JSON, Protocol Buffers, Avro, Thrift), and how schemas evolve so old and new code can coexist during rolling upgrades.",
+          status: "coming",
+          sections: [],
+        },
+      ],
+    },
+
+    /* ======================= PART II (coming) ======================= */
+    {
+      id: "part2",
+      label: "Part II",
+      title: "Distributed Data",
+      blurb:
+        "What happens when data no longer fits — or shouldn't live — on a single machine: replication, partitioning, transactions, and the hard truths of distributed systems.",
+      chapters: [
+        {
+          id: "ch5",
+          number: 5,
+          title: "Replication",
+          summary:
+            "Keeping copies of data on multiple nodes: single-leader, multi-leader, and leaderless replication, and the thorny problem of replication lag.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch6",
+          number: 6,
+          title: "Partitioning",
+          summary:
+            "Splitting a large dataset across nodes (sharding): partitioning by key range or hash, secondary indexes, rebalancing, and request routing.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch7",
+          number: 7,
+          title: "Transactions",
+          summary:
+            "The slippery concept of ACID, weak isolation levels, race conditions, and serializability — what transactions really guarantee.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch8",
+          number: 8,
+          title: "The Trouble with Distributed Systems",
+          summary:
+            "Unreliable networks, unreliable clocks, and process pauses — the partial failures that make distributed systems genuinely hard.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch9",
+          number: 9,
+          title: "Consistency and Consensus",
+          summary:
+            "Linearizability, ordering guarantees, and consensus — how nodes can agree despite faults, and the costs of doing so.",
+          status: "coming",
+          sections: [],
+        },
+      ],
+    },
+
+    /* ======================= PART III (coming) ======================= */
+    {
+      id: "part3",
+      label: "Part III",
+      title: "Derived Data",
+      blurb:
+        "Integrating multiple data systems — databases, caches, indexes, and processing frameworks — into coherent, reliable applications through batch and stream processing.",
+      chapters: [
+        {
+          id: "ch10",
+          number: 10,
+          title: "Batch Processing",
+          summary:
+            "Unix tools, MapReduce, and distributed filesystems — processing large bounded datasets to produce derived outputs.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch11",
+          number: 11,
+          title: "Stream Processing",
+          summary:
+            "Event streams, message brokers, change data capture, and processing unbounded data as it arrives.",
+          status: "coming",
+          sections: [],
+        },
+        {
+          id: "ch12",
+          number: 12,
+          title: "The Future of Data Systems",
+          summary:
+            "Putting it all together — dataflow, derived state, correctness, and doing the right thing when building data systems.",
+          status: "coming",
+          sections: [],
+        },
       ],
     },
   ],

@@ -1,0 +1,10 @@
+{
+  "name": "ddia-interactive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive, question-driven field manual for Designing Data-Intensive Applications.",
+  "scripts": {
+    "build:db": "rm -f data/course.db && node tools/build_db.mjs | sqlite3 data/course.db && echo 'built data/course.db'",
+    "serve": "python3 -m http.server 8123"
+  }
+}

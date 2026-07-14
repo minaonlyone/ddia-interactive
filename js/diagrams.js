@@ -88,6 +88,42 @@ window.DDIA_DIAGRAMS = {
 </svg>`;
   },
 
+  /* Ch3 — row-oriented vs column-oriented storage layout */
+  rowVsColumn() {
+    const cols = ["id", "name", "region", "price"];
+    const rows = [
+      ["1", "Kettle", "EU", "29"],
+      ["2", "Lamp", "US", "40"],
+      ["3", "Mug", "EU", "12"],
+    ];
+    const rowColors = ["var(--sig)", "var(--teal)", "var(--amber)"];
+    let out = `<svg viewBox="0 0 640 300" role="img" aria-label="Row-oriented versus column-oriented storage layout" class="fig-svg">`;
+    // left: row-oriented
+    out += `<text x="20" y="24" class="d-node" style="font-weight:700">Row-oriented</text>`;
+    out += `<text x="20" y="40" class="d-lbl">whole rows stored together</text>`;
+    let x = 20, y = 58;
+    rows.forEach((r, ri) => {
+      r.forEach((v, ci) => {
+        out += `<rect x="${x + ci * 62}" y="${y + ri * 34}" width="60" height="30" fill="none" stroke="${rowColors[ri]}" stroke-width="1.4"/><text x="${x + ci * 62 + 30}" y="${y + ri * 34 + 19}" text-anchor="middle" class="d-lbl" fill="var(--ink)">${v}</text>`;
+      });
+      out += `<text x="${x + 4 * 62 + 6}" y="${y + ri * 34 + 19}" class="d-lbl" fill="${rowColors[ri]}">row ${ri + 1}</text>`;
+    });
+    // right: column-oriented
+    const cx = 360;
+    out += `<text x="${cx}" y="24" class="d-node" style="font-weight:700">Column-oriented</text>`;
+    out += `<text x="${cx}" y="40" class="d-lbl">each column stored together</text>`;
+    cols.forEach((c, ci) => {
+      out += `<text x="${cx}" y="${58 + ci * 34 + 19}" class="d-lbl" fill="var(--sig)">${c}</text>`;
+      rows.forEach((r, ri) => {
+        out += `<rect x="${cx + 46 + ri * 46}" y="${58 + ci * 34}" width="44" height="30" fill="none" stroke="var(--muted)" stroke-width="1.3"/><text x="${cx + 46 + ri * 46 + 22}" y="${58 + ci * 34 + 19}" text-anchor="middle" class="d-lbl" fill="var(--ink)">${r[ci]}</text>`;
+      });
+    });
+    out += `<rect x="${cx + 44}" y="${58 + 3 * 34}" width="140" height="30" fill="var(--sig)" opacity="0.10"/>`;
+    out += `<text x="${cx}" y="290" class="d-lbl">a query on “price” reads only the price column → far less I/O</text>`;
+    out += `</svg>`;
+    return out;
+  },
+
   /* Figure 1-4 — response-time distribution with percentiles */
   percentiles() {
     // deterministic pseudo-random bars so the figure is stable

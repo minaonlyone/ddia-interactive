@@ -5,7 +5,7 @@
  * Progress persists in localStorage.
  */
 (function () {
-  const C = window.DDIA_CONTENT;
+  let C = null; // course content, loaded from the SQLite database at boot
   const DIAG = window.DDIA_DIAGRAMS;
   const PKEY = "ddia.progress.v1";
   const app = document.getElementById("app");
@@ -79,6 +79,14 @@
     trending: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6",
     wrench: "M14 6a4 4 0 0 1 5 5l-9 9-4-4 9-9a4 4 0 0 1-1-1Z",
     check: "M20 6 9 17l-5-5",
+    history: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2",
+    code: "m8 6-6 6 6 6M16 6l6 6-6 6",
+    graph:
+      "M6 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M18 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M7.6 8.6l3.5 8M16.4 8.6l-3.5 8",
+    db: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3ZM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3",
+    tree: "M10 3h4v4h-4zM3 17h4v4H3zM17 17h4v4h-4zM12 7v4M5 17v-3h14v3",
+    columns: "M4 4h4v16H4zM10 4h4v16h-4zM16 4h4v16h-4z",
+    lock: "M6 10V8a6 6 0 0 1 12 0v2M5 10h14v10H5z",
   };
   const icon = (name) =>
     `<svg viewBox="0 0 24 24" class="ic" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[name] || ICONS.layers}"/></svg>`;
@@ -182,6 +190,20 @@
       .map((part) => {
         const chapters = part.chapters
           .map((chap) => {
+            if (chap.status === "coming") {
+              return `
+              <div class="chapcard chapcard--coming" aria-disabled="true">
+                <div class="chapcard-top">
+                  <span class="chapnum">Ch ${chap.number}</span>
+                  <span class="pill pill--coming">${icon("lock")} Coming</span>
+                </div>
+                <h3>${esc(chap.title)}</h3>
+                <p>${esc(chap.summary)}</p>
+                <div class="chapcard-foot">
+                  <span class="est">Not yet available</span>
+                </div>
+              </div>`;
+            }
             const pct = Progress.chapterPct(part, chap);
             const ev = Progress.evalOf(`${part.id}.${chap.id}`);
             const badge = ev && ev.passed ? `<span class="pill pill--pass">Passed ${ev.best}%</span>` : "";
@@ -408,7 +430,7 @@
 
     if (parts[0] === "read") {
       const { part, chap } = findChapter(parts[1], parts[2]);
-      if (!chap) return mount(viewHome());
+      if (!chap || chap.status === "coming" || !chap.sections.length) return mount(viewHome());
       const section =
         (parts[3] && chap.sections.find((s) => s.id === parts[3])) || chap.sections[0];
       return mount(viewSection(part, chap, section));
@@ -416,7 +438,7 @@
 
     if (parts[0] === "eval") {
       const { part, chap } = findChapter(parts[1], parts[2]);
-      if (!chap) return mount(viewHome());
+      if (!chap || chap.status === "coming" || !chap.evaluation) return mount(viewHome());
       return mount(viewEval(part, chap));
     }
 
@@ -424,8 +446,38 @@
   }
 
   /* ------------------------------ boot ------------------------------ */
+  function screen(inner) {
+    app.innerHTML = `<div class="boot">${inner}</div>`;
+  }
+  function loadingScreen() {
+    screen(`
+      <div class="boot-mark">◆</div>
+      <h1>DDIA Interactive</h1>
+      <p class="boot-msg">Opening the course database…</p>
+      <div class="boot-bar"><i></i></div>`);
+  }
+  function errorScreen(err) {
+    screen(`
+      <div class="boot-mark boot-mark--err">▲</div>
+      <h1>Couldn't load the course</h1>
+      <p class="boot-msg">${esc(err && err.message ? err.message : String(err))}</p>
+      <p class="boot-hint">This page reads content from a SQLite database, which needs to be served over http(s).
+      If you opened the file directly, run a local server (<code>python3 -m http.server</code>) and reload.</p>
+      <button class="btn-primary" onclick="location.reload()">Retry</button>`);
+  }
+
   Progress.load();
   window.addEventListener("hashchange", route);
-  route();
-  if (window.Pomodoro) window.Pomodoro.init();
+  loadingScreen();
+  window
+    .DDIA_loadContent()
+    .then((content) => {
+      C = content;
+      route();
+      if (window.Pomodoro) window.Pomodoro.init();
+    })
+    .catch((err) => {
+      console.error(err);
+      errorScreen(err);
+    });
 })();
