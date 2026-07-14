@@ -43,13 +43,24 @@ thing is paced by the Pomodoro technique so a 500-page mountain becomes a series
 
 - 🧠 **Question-based learning** — inline knowledge checks live *inside* each section, every one with an explanation of why the answer is right (a wrong guess is still a lesson).
 - 🎯 **Evaluation gate** — a graded assessment ends every chapter; score **70%+** to mark it complete.
+- 🏆 **Level up as you learn** — earn **XP** for reading sections, answering checks, and passing evaluations; climb from *Curious Reader* to *Chief Data Whisperer* and unlock **badges** (Flawless, Chapter Master, Quiz Whiz…) along the way.
 - 🍅 **Pomodoro, built in** — 25/5 focus cycles (long break every 4th), persistent across reloads, with a completion chime and a live tab-title countdown.
 - 💾 **Content in a real database** — course material ships as a **SQLite** file (`data/course.db`) and is queried in the browser via **sql.js** (SQLite compiled to WebAssembly).
-- 📈 **Progress that sticks** — sections read, checks answered, and best evaluation scores are saved in your browser (`localStorage`).
+- 📈 **Progress that sticks** — sections read, checks answered, XP, level, and badges are saved in your browser (`localStorage`).
 - ✍️ **Hand-drawn SVG figures** — the data-system architecture, Twitter fan-out, response-time percentiles, and row-vs-column storage diagrams, redrawn in the app's own style.
 - 🗺️ **Full course map** — all three parts and every chapter are listed; chapters still in progress are clearly marked **Coming**.
 - 🎨 **A design with a point of view** — an "engineering field manual" aesthetic: warm paper, ink, a single signal-red accent, and characterful type. No generic AI slop.
 - ⚡ **Zero build step** — plain HTML/CSS/JS. GitHub Pages serves it as-is.
+
+## 🏆 Turn studying into a game
+
+Every section you read and every question you answer earns XP. Level up through ten
+engineer ranks, watch your progress bar fill, and collect badges for milestones like
+acing an evaluation or finishing a whole chapter — all tracked right on your home screen.
+
+<div align="center">
+<img src="screenshots/progress.png" alt="Progress dashboard with level, XP bar, and badges" width="820"/>
+</div>
 
 ## 📸 Screenshots
 

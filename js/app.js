@@ -12,7 +12,7 @@
 
   /* ---------------------------- progress ---------------------------- */
   const Progress = {
-    data: { sections: {}, checks: {}, evals: {} },
+    data: { sections: {}, checks: {}, evals: {}, game: { level: 1, badges: {} } },
     load() {
       try {
         const raw = localStorage.getItem(PKEY);
@@ -56,6 +56,44 @@
     },
   };
 
+  /* --------------------------- gamification ------------------------- */
+  // Recompute XP/level/badges and fire toasts for anything newly unlocked.
+  function syncGame() {
+    if (!C || !window.Gamify) return null;
+    const g = window.Gamify.compute(C, Progress.data);
+    const game = Progress.data.game || (Progress.data.game = { level: 1, badges: {} });
+    let changed = false;
+    g.badges.forEach((b) => {
+      if (b.earned && !game.badges[b.id]) {
+        game.badges[b.id] = true;
+        changed = true;
+        window.Gamify.notify({ type: "badge", badge: b });
+      }
+    });
+    if (g.level.num > (game.level || 1)) {
+      window.Gamify.notify({ type: "level", level: g.level });
+      game.level = g.level.num;
+      changed = true;
+    } else if (g.level.num !== game.level) {
+      game.level = g.level.num;
+      changed = true;
+    }
+    if (changed) Progress.save();
+    return g;
+  }
+  // At boot, sync announced state to existing progress WITHOUT toasting
+  // (so returning users aren't flooded with retroactive unlocks).
+  function seedGame() {
+    if (!C || !window.Gamify) return;
+    const g = window.Gamify.compute(C, Progress.data);
+    const game = Progress.data.game || (Progress.data.game = { level: 1, badges: {} });
+    g.badges.forEach((b) => {
+      if (b.earned) game.badges[b.id] = true;
+    });
+    game.level = g.level.num;
+    Progress.save();
+  }
+
   /* ---------------------------- helpers ----------------------------- */
   const esc = (s) =>
     String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -92,7 +130,7 @@
     `<svg viewBox="0 0 24 24" class="ic" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[name] || ICONS.layers}"/></svg>`;
 
   /* --------------------------- block render ------------------------- */
-  function renderBlock(b, ctx) {
+  function renderBlock(b, ctx, idx) {
     switch (b.type) {
       case "lead":
         return `<p class="lead">${fmt(b.text)}</p>`;
@@ -119,7 +157,7 @@
         return `<figure class="figure">${svg}<figcaption>${fmt(b.caption)}</figcaption></figure>`;
       }
       case "check":
-        return renderQuestion(b, `${ctx}.chk${ctx.q || 0}`, { inline: true });
+        return renderQuestion(b, `${ctx}.chk${idx}`, { inline: true });
       default:
         return "";
     }
@@ -254,7 +292,9 @@
         </div>
       </div>
     </header>
-    <main class="wrap">${parts}
+    <main class="wrap">${
+      window.Gamify ? window.Gamify.renderDashboard(window.Gamify.compute(C, Progress.data)) : ""
+    }${parts}
       <footer class="site-foot">
         <p>Built as a study companion. The book text is © Martin Kleppmann / O'Reilly — buy it to support the author.</p>
       </footer>
@@ -278,6 +318,7 @@
     return `
     <nav class="rail">
       <a class="rail-back" href="#/">← All chapters</a>
+      ${window.Gamify ? window.Gamify.renderRailChip(window.Gamify.compute(C, Progress.data)) : ""}
       <div class="rail-title"><span class="part-label">${esc(part.label)} · Ch ${chap.number}</span></div>
       ${items}
       <a class="rail-item rail-eval ${evDone ? "done" : ""}" href="#/eval/${part.id}/${chap.id}">
@@ -291,7 +332,7 @@
   function viewSection(part, chap, section) {
     const idx = chap.sections.indexOf(section);
     const sid = `${part.id}.${chap.id}.${section.id}`;
-    const blocks = section.blocks.map((b) => renderBlock(b, sid)).join("");
+    const blocks = section.blocks.map((b, i) => renderBlock(b, sid, i)).join("");
     const prev = idx > 0 ? chap.sections[idx - 1] : null;
     const next = idx < chap.sections.length - 1 ? chap.sections[idx + 1] : null;
     const nextHref = next
@@ -362,13 +403,19 @@
     const mr = app.querySelector(".mark-read");
     if (mr) {
       mr.addEventListener("click", () => {
+        const already = Progress.sectionDone(mr.dataset.sid);
         Progress.markSection(mr.dataset.sid);
+        if (!already && window.Gamify) window.Gamify.xpPop(window.Gamify.XP.section);
+        syncGame();
         location.hash = mr.dataset.next.replace(/^#/, "");
       });
     }
 
     // inline knowledge checks
-    wireQuestions(app.querySelector(".prose") || app);
+    wireQuestions(app.querySelector(".prose") || app, (correct) => {
+      if (correct && window.Gamify) window.Gamify.xpPop(window.Gamify.XP.check);
+      syncGame();
+    });
 
     // evaluation form
     const form = app.querySelector(".eval-form");
@@ -401,6 +448,7 @@
       const pct = Math.round((correctCount / total) * 100);
       const passed = pct >= pass;
       Progress.recordEval(id, pct, passed);
+      syncGame();
       resultEl.hidden = false;
       resultEl.className = `eval-result ${passed ? "pass" : "fail"}`;
       resultEl.innerHTML = `
@@ -466,15 +514,46 @@
       <button class="btn-primary" onclick="location.reload()">Retry</button>`);
   }
 
+  // Hidden demo state (?demo) — seeds a sample profile so the progress
+  // dashboard renders populated for screenshots. Only applied when there's no
+  // real progress yet, so it never overwrites a returning learner's data.
+  function maybeSeedDemo() {
+    if (!/[?&]demo\b/.test(location.search)) return;
+    if (Object.keys(Progress.data.sections || {}).length) return;
+    const S = {};
+    ["thinking", "reliability", "scalability", "maintainability"].forEach((s) => (S[`part1.ch1.${s}`] = true));
+    ["relational-document", "great-debate", "query-languages", "graph-models"].forEach((s) => (S[`part1.ch2.${s}`] = true));
+    ["logs-indexes", "lsm-btree"].forEach((s) => (S[`part1.ch3.${s}`] = true));
+    const checks = {};
+    for (let i = 0; i < 12; i++) checks["demo" + i] = { correct: true };
+    Progress.data.sections = S;
+    Progress.data.checks = checks;
+    Progress.data.evals = {
+      "part1.ch1": { best: 100, passed: true, last: 100 },
+      "part1.ch2": { best: 90, passed: true, last: 90 },
+    };
+    try {
+      localStorage.setItem("ddia.pomodoro.v1", JSON.stringify({ completed: 5 }));
+    } catch (_) {}
+  }
+
   Progress.load();
+  maybeSeedDemo();
   window.addEventListener("hashchange", route);
   loadingScreen();
   window
     .DDIA_loadContent()
     .then((content) => {
       C = content;
+      seedGame();
       route();
       if (window.Pomodoro) window.Pomodoro.init();
+      if (/[?&]demo\b/.test(location.search)) {
+        setTimeout(() => {
+          const d = document.querySelector(".dash");
+          if (d) window.scrollTo({ top: d.offsetTop - 24, behavior: "instant" });
+        }, 500);
+      }
     })
     .catch((err) => {
       console.error(err);
