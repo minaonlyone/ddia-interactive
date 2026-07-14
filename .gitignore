@@ -1,0 +1,10 @@
+# Copyrighted book PDF — never publish to the public repo
+*.pdf
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+node_modules/
